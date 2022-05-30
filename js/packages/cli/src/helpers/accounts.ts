@@ -627,6 +627,8 @@ export async function loadAuctionHouseProgram(
   });
   const idl = await anchor.Program.fetchIdl(AUCTION_HOUSE_PROGRAM_ID, provider);
 
+  console.log(JSON.stringify(idl));
+
   return new anchor.Program(idl, AUCTION_HOUSE_PROGRAM_ID, provider);
 }
 

@@ -11,7 +11,6 @@ import {
   getAuctionHouseTreasuryAcct,
   getMetadata,
   getTokenAmount,
-  loadAuctionHouseProgram,
   loadWalletKey,
 } from './helpers/accounts';
 import { BN, web3 } from '@project-serum/anchor';
@@ -20,6 +19,8 @@ import { ASSOCIATED_TOKEN_PROGRAM_ID, Token } from '@solana/spl-token';
 import { getPriceWithMantissa } from './helpers/various';
 import { sendTransactionWithRetryWithKeypair } from './helpers/transactions';
 import { decodeMetadata, Metadata } from './helpers/schema';
+import { loadAuctionHouseProgram } from './helpers/loadAuctionProgram';
+import { Keypair } from '@solana/web3.js';
 
 program.version('0.0.1');
 log.setLevel('info');
@@ -693,7 +694,7 @@ programCommand('execute_sale')
       ? loadWalletKey(auctionHouseKeypair)
       : null;
     const anchorProgram = await loadAuctionHouseProgram(
-      auctionHouseSigns ? auctionHouseKeypairLoaded : walletKeyPair,
+      auctionHouseSigns ? auctionHouseKeypairLoaded : new Keypair(),
       env,
     );
     const auctionHouseObj = await anchorProgram.account.auctionHouse.fetch(
@@ -724,6 +725,17 @@ programCommand('execute_sale')
     );
 
     const tokenAccountKey = (await getAtaForMint(mintKey, sellerWalletKey))[0];
+
+    console.log({
+      auctionHouseKey: auctionHouseKey.toBase58(),
+      wallet: buyerWalletKey.toBase58(),
+      tokenAccountKey: tokenAccountKey.toBase58(),
+      //@ts-ignore
+      treasuryMint: auctionHouseObj.treasuryMint.toBase58(),
+      mintKey: mintKey.toBase58(),
+      tokenSizeAdjusted,
+      buyPriceAdjusted,
+    });
 
     const buyerTradeState = (
       await getAuctionHouseTradeState(
@@ -803,6 +815,45 @@ programCommand('execute_sale')
     //@ts-ignore
     const tMint: web3.PublicKey = auctionHouseObj.treasuryMint;
 
+    console.log({
+      bump,
+      freeTradeStateBump,
+      programAsSignerBump,
+      buyPriceAdjusted,
+      tokenSizeAdjusted,
+    });
+
+    console.log({
+      buyer: buyerWalletKey.toBase58(),
+      seller: sellerWalletKey.toBase58(),
+      metadata: metadata.toBase58(),
+      tokenAccount: tokenAccountKey.toBase58(),
+      tokenMint: mintKey.toBase58(),
+      escrowPaymentAccount: escrowPaymentAccount.toBase58(),
+      treasuryMint: tMint.toBase58(),
+      sellerPaymentReceiptAccount: isNative
+        ? sellerWalletKey.toBase58()
+        : (await getAtaForMint(tMint, sellerWalletKey))[0].toBase58(),
+      buyerReceiptTokenAccount: (
+        await getAtaForMint(mintKey, buyerWalletKey)
+      )[0].toBase58(),
+      //@ts-ignore
+      authority: auctionHouseObj.authority.toBase58(),
+      auctionHouse: auctionHouseKey.toBase58(),
+      //@ts-ignore
+      auctionHouseFeeAccount: auctionHouseObj.auctionHouseFeeAccount.toBase58(),
+      //@ts-ignore
+      auctionHouseTreasury: auctionHouseObj.auctionHouseTreasury.toBase58(),
+      sellerTradeState: sellerTradeState.toBase58(),
+      buyerTradeState: buyerTradeState.toBase58(),
+      tokenProgram: TOKEN_PROGRAM_ID,
+      systemProgram: web3.SystemProgram.programId,
+      ataProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+      programAsSigner,
+      rent: web3.SYSVAR_RENT_PUBKEY,
+      freeTradeState: freeTradeState.toBase58(),
+    });
+
     const instruction = await anchorProgram.instruction.executeSale(
       bump,
       freeTradeStateBump,
@@ -826,12 +877,9 @@ programCommand('execute_sale')
           buyerReceiptTokenAccount: (
             await getAtaForMint(mintKey, buyerWalletKey)
           )[0],
-          //@ts-ignore
           authority: auctionHouseObj.authority,
           auctionHouse: auctionHouseKey,
-          //@ts-ignore
           auctionHouseFeeAccount: auctionHouseObj.auctionHouseFeeAccount,
-          //@ts-ignore
           auctionHouseTreasury: auctionHouseObj.auctionHouseTreasury,
           sellerTradeState,
           buyerTradeState,
@@ -861,13 +909,13 @@ programCommand('execute_sale')
         .map(k => (k.isSigner = true));
     }
 
-    await sendTransactionWithRetryWithKeypair(
-      anchorProgram.provider.connection,
-      auctionHouseSigns ? auctionHouseKeypairLoaded : walletKeyPair,
-      [instruction],
-      signers,
-      'max',
-    );
+    // await sendTransactionWithRetryWithKeypair(
+    //   anchorProgram.provider.connection,
+    //   auctionHouseSigns ? auctionHouseKeypairLoaded : walletKeyPair,
+    //   [instruction],
+    //   signers,
+    //   'max',
+    // );
 
     log.info(
       'Accepted',

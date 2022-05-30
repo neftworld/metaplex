@@ -58,6 +58,12 @@ programCommand('show_escrow')
     const anchorProgram = await loadAuctionHouseProgram(walletKeyPair, env);
 
     const auctionHouseKey = new web3.PublicKey(auctionHouse);
+
+    /* downside of fetching from IDL is that we have no types for this. 
+     Hence auctionHouseObj is an uuugly "any" type
+     I didn't feel like introducing an AuctionHouse SDK dependency (AuctionHouse types 
+     sit there), given that this workaround is aimed at a problem in the SDK itself :D */
+
     const auctionHouseObj = await anchorProgram.account.auctionHouse.fetch(
       auctionHouseKey,
     );

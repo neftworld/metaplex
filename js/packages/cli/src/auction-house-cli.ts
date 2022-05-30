@@ -726,17 +726,6 @@ programCommand('execute_sale')
 
     const tokenAccountKey = (await getAtaForMint(mintKey, sellerWalletKey))[0];
 
-    console.log({
-      auctionHouseKey: auctionHouseKey.toBase58(),
-      wallet: buyerWalletKey.toBase58(),
-      tokenAccountKey: tokenAccountKey.toBase58(),
-      //@ts-ignore
-      treasuryMint: auctionHouseObj.treasuryMint.toBase58(),
-      mintKey: mintKey.toBase58(),
-      tokenSizeAdjusted,
-      buyPriceAdjusted,
-    });
-
     const buyerTradeState = (
       await getAuctionHouseTradeState(
         auctionHouseKey,
@@ -815,45 +804,6 @@ programCommand('execute_sale')
     //@ts-ignore
     const tMint: web3.PublicKey = auctionHouseObj.treasuryMint;
 
-    console.log({
-      bump,
-      freeTradeStateBump,
-      programAsSignerBump,
-      buyPriceAdjusted,
-      tokenSizeAdjusted,
-    });
-
-    console.log({
-      buyer: buyerWalletKey.toBase58(),
-      seller: sellerWalletKey.toBase58(),
-      metadata: metadata.toBase58(),
-      tokenAccount: tokenAccountKey.toBase58(),
-      tokenMint: mintKey.toBase58(),
-      escrowPaymentAccount: escrowPaymentAccount.toBase58(),
-      treasuryMint: tMint.toBase58(),
-      sellerPaymentReceiptAccount: isNative
-        ? sellerWalletKey.toBase58()
-        : (await getAtaForMint(tMint, sellerWalletKey))[0].toBase58(),
-      buyerReceiptTokenAccount: (
-        await getAtaForMint(mintKey, buyerWalletKey)
-      )[0].toBase58(),
-      //@ts-ignore
-      authority: auctionHouseObj.authority.toBase58(),
-      auctionHouse: auctionHouseKey.toBase58(),
-      //@ts-ignore
-      auctionHouseFeeAccount: auctionHouseObj.auctionHouseFeeAccount.toBase58(),
-      //@ts-ignore
-      auctionHouseTreasury: auctionHouseObj.auctionHouseTreasury.toBase58(),
-      sellerTradeState: sellerTradeState.toBase58(),
-      buyerTradeState: buyerTradeState.toBase58(),
-      tokenProgram: TOKEN_PROGRAM_ID,
-      systemProgram: web3.SystemProgram.programId,
-      ataProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-      programAsSigner,
-      rent: web3.SYSVAR_RENT_PUBKEY,
-      freeTradeState: freeTradeState.toBase58(),
-    });
-
     const instruction = await anchorProgram.instruction.executeSale(
       bump,
       freeTradeStateBump,
@@ -909,13 +859,13 @@ programCommand('execute_sale')
         .map(k => (k.isSigner = true));
     }
 
-    // await sendTransactionWithRetryWithKeypair(
-    //   anchorProgram.provider.connection,
-    //   auctionHouseSigns ? auctionHouseKeypairLoaded : walletKeyPair,
-    //   [instruction],
-    //   signers,
-    //   'max',
-    // );
+    await sendTransactionWithRetryWithKeypair(
+      anchorProgram.provider.connection,
+      auctionHouseSigns ? auctionHouseKeypairLoaded : walletKeyPair,
+      [instruction],
+      signers,
+      'max',
+    );
 
     log.info(
       'Accepted',
